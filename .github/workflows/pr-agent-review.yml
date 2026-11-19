@@ -10,6 +10,10 @@ on:
         description: "ID модели в формате OpenRouter, без префикса openrouter/ (например, anthropic/...)"
         type: string
         required: true
+      max_input_tokens:
+        description: "Лимит входных токенов для модели (нужен, если pr-agent не знает модель; не больше её контекста)"
+        type: number
+        default: 128000
     secrets:
       OPENROUTER_API_KEY:
         required: true
@@ -47,6 +51,7 @@ jobs:
           OPENROUTER__KEY: ${{ secrets.OPENROUTER_API_KEY }}
           CONFIG__MODEL: openrouter/${{ inputs.model }}
           CONFIG__FALLBACK_MODELS: "[]"
+          CONFIG__CUSTOM_MODEL_MAX_TOKENS: ${{ inputs.max_input_tokens }}
           # synchronize по умолчанию пропускается — включаем, чтобы ревьюить новые пуши
           GITHUB_ACTION_CONFIG__PR_ACTIONS: '["opened", "reopened", "synchronize", "ready_for_review"]'
           GITHUB_ACTION_CONFIG__AUTO_REVIEW: "true"

@@ -64,13 +64,11 @@ project/.github/workflows/ai-review.yml        (pull_request_target, корот�
 | Параметр | По умолчанию | Описание |
 |---|---|---|
 | `model` | — (обязателен) | ID модели в формате OpenRouter, без префикса `openrouter/` |
+| `max_input_tokens` | `128000` | Лимит входных токенов. Нужен, если pr-agent не знает модель; не больше контекста модели. Больший diff обрезается |
 
 pr-agent запускает автоматически `/review` и `/improve`. `/describe` выключен, чтобы
 не переписывать описание PR постороннего автора. Команды в комментариях
 (`issue_comment`) не подключены — иначе их мог бы запускать кто угодно.
-
-Если pr-agent ругается, что не знает лимит токенов модели, добавьте в env шага
-`CONFIG__CUSTOM_MODEL_MAX_TOKENS` с размером контекста модели.
 
 ## Как сравнивать
 
@@ -100,9 +98,16 @@ PR из форков пишут посторонние люди, а `pull_reques
 к секретам репозитория. Поэтому:
 
 - код PR **никогда не исполняется** — никаких install/build/test;
-- Claude Code: код PR кладётся в `pr-head/`, агенту разрешены только `Read`, `Grep`,
-  `Glob`, `gh pr view/diff/comment` и inline-комментарии; `Write`, `Edit` и
-  `git push` запрещены; в промпте указано, что содержимое PR — недоверенные данные;
+- Claude Code:
+  - код PR кладётся в `pr-head/` (`allow-unsafe-pr-checkout: true` — допустимо,
+    потому что он только читается); `CLAUDE.md`, `CLAUDE.local.md` и `.claude/`
+    из него удаляются, чтобы автор PR не мог подложить агенту «правила проекта»;
+  - агенту разрешены только `Read`, `Grep`, `Glob`, `gh pr view/diff/comment` и
+    inline-комментарии; `Write`, `Edit` и `git push` запрещены;
+  - чтение вне workspace запрещено (`blockReadsOutsideWorkingDirectories` плюс
+    deny-правила на `/proc`, `/sys` и `$RUNNER_TEMP`, `gh pr comment --body-file`),
+    чтобы prompt injection не могла прочитать ключи из окружения и опубликовать их;
+  - в промпте указано, что содержимое PR — недоверенные данные;
 - pr-agent: checkout не делается вовсе, код читается через GitHub API;
 - `GITHUB_TOKEN` с минимальными правами (`contents: read`, `issues: write`,
   `pull-requests: write`), без PAT.

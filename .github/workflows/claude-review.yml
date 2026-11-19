@@ -49,6 +49,16 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           path: pr-head
           persist-credentials: false
+          # checkout@v6 по умолчанию запрещает код форка в pull_request_target.
+          # Здесь это безопасно: код PR только читается и нигде не исполняется.
+          allow-unsafe-pr-checkout: true
+
+      # Claude Code подхватывает CLAUDE.md и .claude/ из подпапок, которые читает.
+      # Убираем их из кода PR, чтобы автор PR не мог подложить агенту «правила проекта».
+      - name: Remove agent config from PR code
+        run: |
+          find pr-head \( -name CLAUDE.md -o -name CLAUDE.local.md \) -type f -delete
+          find pr-head -name .claude -type d -prune -exec rm -rf {} +
 
       - name: Claude review
         uses: anthropics/claude-code-action@v1
@@ -103,6 +113,6 @@ jobs:
           claude_args: |
             --max-turns ${{ inputs.max_turns }}
             ${{ inputs.model && format('--model {0}', inputs.model) || '' }}
-            --add-dir pr-head
+            --settings '{"permissions":{"blockReadsOutsideWorkingDirectories":true}}'
             --allowedTools "Read,Grep,Glob,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),mcp__github_inline_comment__create_inline_comment"
-            --disallowedTools "Bash(git push:*),Write,Edit"
+            --disallowedTools "Bash(git push:*),Write,Edit,Read(//proc/**),Read(//sys/**),Read(//home/runner/work/_temp/**),Bash(gh pr comment *--body-file*),Bash(gh pr comment * -F *),Bash(gh pr comment * -F/*)"

@@ -113,6 +113,8 @@ jobs:
             - Post one summary with `gh pr comment`: short summary of the change,
               main risks, verdict.
             - Only post GitHub comments — don't submit review text as messages.
+            - Write all comments in English, regardless of the language of the
+              code, comments or CLAUDE.md in the repository.
 
             ${{ inputs.extra_instructions }}
           claude_args: |

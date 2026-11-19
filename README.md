@@ -74,9 +74,10 @@ PR из форков пишут посторонние люди, а `pull_reques
   указывать за пределы workspace), а также `CLAUDE.md`, `CLAUDE.local.md` и
   `.claude/`, чтобы автор PR не мог подложить агенту «правила проекта»;
 - агенту разрешены только `Read`, `Grep`, `Glob`, `gh pr view/diff`,
-  inline-комментарии и `Write` в единственный файл `.ai-review-summary.md`;
-  `Edit`, `gh pr comment` и `git push` запрещены. Итоговый комментарий из этого
-  файла публикует отдельный шаг workflow;
+  inline-комментарии и запись в единственный файл `.ai-review-summary.md`
+  (правило `Edit(...)` — оно покрывает и инструмент `Write`); любая другая запись
+  не разрешена, `gh pr comment` и `git push` запрещены. Итоговый комментарий из
+  этого файла публикует отдельный шаг workflow;
 - чтение вне workspace запрещено (`blockReadsOutsideWorkingDirectories` плюс
   deny-правила на `/proc`, `/sys` и `$RUNNER_TEMP`), чтобы prompt injection не
   могла прочитать ключи из окружения и опубликовать их;

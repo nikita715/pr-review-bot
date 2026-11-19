@@ -82,6 +82,9 @@ PR из форков пишут посторонние люди, а `pull_reques
   deny-правила на `/proc`, `/sys` и `$RUNNER_TEMP`), чтобы prompt injection не
   могла прочитать ключи из окружения и опубликовать их;
 - в промпте указано, что содержимое PR — недоверенные данные;
+- прошлые замечания бота (inline и итоговые) собирает workflow в
+  `.ai-review-previous.md`, только от `github-actions[bot]` — комментарии автора
+  PR не могут подавить замечания;
 - `GITHUB_TOKEN` с минимальными правами (`contents: read`, `pull-requests: write`),
   без PAT.
 

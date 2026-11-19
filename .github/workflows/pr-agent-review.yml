@@ -1,0 +1,55 @@
+# Reusable workflow: ревью PR из форков с помощью qodo-ai/pr-agent через OpenRouter.
+# Запускается параллельно с claude-review.yml для сравнения качества.
+
+name: PR-Agent Review
+
+on:
+  workflow_call:
+    inputs:
+      model:
+        description: "ID модели в формате OpenRouter, без префикса openrouter/ (например, anthropic/...)"
+        type: string
+        required: true
+    secrets:
+      OPENROUTER_API_KEY:
+        required: true
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  review:
+    # Только PR из форков и только не черновики (дублирует условие в caller на всякий случай)
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name != github.repository &&
+      github.event.sender.type != 'Bot'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check model
+        env:
+          MODEL: ${{ inputs.model }}
+        run: |
+          if [ -z "$MODEL" ]; then
+            echo "::error::Не задана модель: передайте input 'model' (например, через переменную REVIEW_MODEL)"
+            exit 1
+          fi
+
+      # Checkout не нужен: pr-agent получает diff и файлы через GitHub API
+      # и не исполняет код PR.
+      - name: PR-Agent
+        uses: the-pr-agent/pr-agent@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENROUTER__KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          CONFIG__MODEL: openrouter/${{ inputs.model }}
+          CONFIG__FALLBACK_MODELS: "[]"
+          # synchronize по умолчанию пропускается — включаем, чтобы ревьюить новые пуши
+          GITHUB_ACTION_CONFIG__PR_ACTIONS: '["opened", "reopened", "synchronize", "ready_for_review"]'
+          GITHUB_ACTION_CONFIG__AUTO_REVIEW: "true"
+          GITHUB_ACTION_CONFIG__AUTO_IMPROVE: "true"
+          # Не переписываем описание PR постороннего автора
+          GITHUB_ACTION_CONFIG__AUTO_DESCRIBE: "false"

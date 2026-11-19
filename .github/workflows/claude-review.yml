@@ -61,6 +61,11 @@ jobs:
           find pr-head -name .claude -type d -prune -exec rm -rf {} +
 
       - name: Claude review
+        id: claude
+        # Action падает, если успешная сессия заняла больше --max-turns ходов
+        # (финальный ответ считается лишним ходом). Настоящий результат
+        # проверяет следующий шаг.
+        continue-on-error: true
         uses: anthropics/claude-code-action@v1
         # Запросы к модели идут через OpenRouter (Anthropic-совместимый эндпоинт)
         env:
@@ -116,3 +121,33 @@ jobs:
             --settings '{"permissions":{"blockReadsOutsideWorkingDirectories":true}}'
             --allowedTools "Read,Grep,Glob,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),mcp__github_inline_comment__create_inline_comment"
             --disallowedTools "Bash(git push:*),Write,Edit,Read(//proc/**),Read(//sys/**),Read(//home/runner/work/_temp/**),Bash(gh pr comment *--body-file*),Bash(gh pr comment * -F *),Bash(gh pr comment * -F/*)"
+
+      # Шаг Claude упал: считаем ревью успешным, только если сессия всё-таки
+      # завершилась успешным результатом (например, превышен лимит ходов).
+      - name: Check review result
+        if: steps.claude.outcome == 'failure'
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          python3 - <<'EOF'
+          import json, os, sys
+
+          path = os.environ.get("EXECUTION_FILE") or os.path.join(
+              os.environ["RUNNER_TEMP"], "claude-execution-output.json")
+          try:
+              with open(path) as f:
+                  messages = json.load(f)
+          except (OSError, ValueError) as e:
+              print(f"::error::Claude review failed and its execution log is unavailable: {e}")
+              sys.exit(1)
+
+          results = [m for m in messages if isinstance(m, dict) and m.get("type") == "result"]
+          result = results[-1] if results else {}
+          if result.get("subtype") == "success" and not result.get("is_error"):
+              print(f"::warning::Review completed in {result.get('num_turns')} turns, "
+                    "over the --max-turns limit; treating it as success")
+              sys.exit(0)
+
+          print(f"::error::Claude review failed (result subtype: {result.get('subtype')})")
+          sys.exit(1)
+          EOF

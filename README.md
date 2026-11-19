@@ -70,13 +70,16 @@ PR из форков пишут посторонние люди, а `pull_reques
 
 - код PR **никогда не исполняется** — никаких install/build/test;
 - код PR кладётся в `pr-head/` (`allow-unsafe-pr-checkout: true` — допустимо,
-  потому что он только читается); `CLAUDE.md`, `CLAUDE.local.md` и `.claude/`
-  из него удаляются, чтобы автор PR не мог подложить агенту «правила проекта»;
-- агенту разрешены только `Read`, `Grep`, `Glob`, `gh pr view/diff/comment` и
-  inline-комментарии; `Write`, `Edit` и `git push` запрещены;
+  потому что он только читается); из него удаляются все симлинки (они могут
+  указывать за пределы workspace), а также `CLAUDE.md`, `CLAUDE.local.md` и
+  `.claude/`, чтобы автор PR не мог подложить агенту «правила проекта»;
+- агенту разрешены только `Read`, `Grep`, `Glob`, `gh pr view/diff`,
+  inline-комментарии и `Write` в единственный файл `.ai-review-summary.md`;
+  `Edit`, `gh pr comment` и `git push` запрещены. Итоговый комментарий из этого
+  файла публикует отдельный шаг workflow;
 - чтение вне workspace запрещено (`blockReadsOutsideWorkingDirectories` плюс
-  deny-правила на `/proc`, `/sys` и `$RUNNER_TEMP`, `gh pr comment --body-file`),
-  чтобы prompt injection не могла прочитать ключи из окружения и опубликовать их;
+  deny-правила на `/proc`, `/sys` и `$RUNNER_TEMP`), чтобы prompt injection не
+  могла прочитать ключи из окружения и опубликовать их;
 - в промпте указано, что содержимое PR — недоверенные данные;
 - `GITHUB_TOKEN` с минимальными правами (`contents: read`, `pull-requests: write`),
   без PAT.
